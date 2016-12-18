@@ -19,7 +19,6 @@
 %Want to know what I've done afterwards!!
 %Maybe calc some kind of error/deviation, how?
     % -Explain what this error actually is!
-
 %% Data
 %************************************ R **********************
 clear Meas
@@ -1217,45 +1216,60 @@ y=cat(1,Meas(i,:,:).Mean)./...
     %(cat(1,Meas(i,:,:).Width)).^expWidth./...
     %(cat(1,Meas(i,:,:).Density)).^expDensity;
 c=mean(y);
-%% Tiny code
+%% TimesCheck
 
 for i=1:15
     for l=1:3
        for h=1:3
-           Meas(i,l,h).SolidTime=c.*sqrt(Meas(i,l,h).LengthTrack./(9.82.*sin(Meas(i,l,h).Angle)));
+           Meas(i,l,h).SolidTime=c.*sqrt((Meas(i,l,h).LengthTrack./1000)./(9.82.*sin(Meas(i,l,h).Angle)));
        end
     end
 end
 
 Solids=[1 3 7 8 10 11 12 13 14 15];
 clf
-scatter(cat(1,Meas(Solids,:,:).Mean),cat(1,Meas(Solids,:,:).SolidTime))
+scatter(cat(1,Meas(Solids,:,:).Mean),cat(1,Meas(Solids,:,:).SolidTime));
 %% Calc InnerDiam
-i=[2 4 5 6 9];
+NonSolids=[2 4 5 6 9];
 %i=1:15;
 l=1:3;h=1:3;
 
-TdivTexpr=((cat(1,Meas(i,l,h).Mean)./...
-    (cat(1,Meas(i,l,h).LengthTrack)./1000).^expLenghtTrack./...
-    (sin(cat(1,Meas(i,l,h).Angle))).^expAngle./...
+TdivTexpr=((cat(1,Meas(NonSolids,l,h).Mean)./...
+    (cat(1,Meas(NonSolids,l,h).LengthTrack)./1000).^expLenghtTrack./...
+    (sin(cat(1,Meas(NonSolids,l,h).Angle))).^expAngle./...
     c.*sqrt(9.82)));
-TdivTs = cat(1,Meas(i,l,h).Mean)./cat(1,Meas(i,l,h).SolidTime);
-ddivD = cat(1,Meas(i,l,h).InnerDiam)./cat(1,Meas(i,l,h).Diameter);
+TdivTs = cat(1,Meas(NonSolids,l,h).Mean)./cat(1,Meas(NonSolids,l,h).SolidTime);
+ddivD = cat(1,Meas(NonSolids,l,h).InnerDiam)./cat(1,Meas(NonSolids,l,h).Diameter);
 includeIdx = find(TdivTexpr > 1);
 x=log(ddivD(includeIdx));
 A=[x,ones(size(x))];
-y = log(TdivTexpr(includeIdx).^2-1);
+y = log(TdivTexpr(includeIdx).^1-1);
     
 KM=A\y;
 expInnerDiam=KM(1)
 %% Calc constant b (non-solid)
 i=[2 4 5 6 9];
-y=cat(1,Meas(i,:,:).Mean)./...
-    (cat(1,Meas(i,:,:).LengthTrack)./1000).^expLenghtTrack./...
-    (sin(cat(1,Meas(i,:,:).Angle))).^expAngle./...
-    9.82^(-0.5)./c./...
-    (cat(1,Meas(i,:,:).InnerDiam)./cat(1,Meas(i,:,:).Diameter)).^expInnerDiam;
-b=mean(y)
+%y=cat(1,Meas(i,:,:).Mean)./...
+%    (cat(1,Meas(i,:,:).LengthTrack)./1000).^expLenghtTrack./...
+%    (sin(cat(1,Meas(i,:,:).Angle))).^expAngle./...
+%    9.82^(-0.5)./c./...
+%    (1+(cat(1,Meas(i,:,:).InnerDiam)./cat(1,Meas(i,:,:).Diameter)).^expInnerDiam);
+y=(TdivTs-1)./(ddivD.^expInnerDiam);
+b=mean(y);
+%% Standard Deviation (solid)
+Stds=std(cat(1,Meas(Solids,:,:).SolidTime)-cat(1,Meas(Solids,:,:).Mean))
+%% Standard Deviation (non-solid)
+for i=NonSolids
+    for l=1:3
+        for h=1:3
+           Meas(i,l,h).NonSolidTime=Meas(i,l,h).SolidTime.*(1+b.*(Meas(i,l,h).InnerDiam./Meas(i,l,h).Diameter).^expInnerDiam);
+        end
+    end
+end
+
+Stdns=std(cat(1,Meas(NonSolids,:,:).NonSolidTime)-cat(1,Meas(NonSolids,:,:).Mean))
+clf
+scatter(cat(1,Meas(NonSolids,:,:).Mean),cat(1,Meas(NonSolids,:,:).NonSolidTime))
 %% Plotting suspicious things
 if false
     clf
